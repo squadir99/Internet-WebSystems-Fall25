@@ -2,12 +2,159 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Homepage</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage - Short Posts</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* simple centering */
+        body { display:flex; justify-content:center; }
+        .container { width:800px; max-width:95%; margin:18px; }
+        textarea, input { font-size:16px; }
+        /* header layout so nav links show */
+        .site-header .container{display:flex;align-items:center;justify-content:space-between}
+        .main-nav a{margin-left:10px;color:inherit;text-decoration:none}
+    </style>
 </head>
 <body>
-    <h1>Welcome to My Homepage</h1>
-    <p>This is a very basic homepage for Day 1.</p>
-    <p><a href="bio.html">Read my bio</a></p>
-    <p><a href="placeholder.html">Work in progress</a></p>
+    <header class="site-header">
+        <div class="container">
+            <h1 class="brand"><a href="main.html">My Short Posts</a></h1>
+            <nav class="main-nav">
+                <a href="main.html">Home</a>
+                <a href="bio.html">About</a>
+                <a href="#categories" id="categories-link">Categories</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="controls">
+            <div class="filter">
+                <label for="category-filter">Filter by category:</label>
+                <select id="category-filter">
+                    <option value="all">All</option>
+                </select>
+            </div>
+        </section>
+
+        <section id="compose" class="compose hidden">
+            <h2>Write a quick post</h2>
+            <form id="post-form">
+                <textarea id="post-text" rows="3" maxlength="280" placeholder="What's on your mind? (max 280 chars)"></textarea>
+                <input id="post-cats" type="text" placeholder="Categories (comma separated)" />
+                <div class="form-actions">
+                    <button type="submit">Post</button>
+                    <button type="button" id="cancel-compose">Cancel</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="feed">
+            <h2>Feed</h2>
+            <div id="toast" class="toast hidden"></div>
+            <ul id="posts" class="posts"></ul>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2025 Sohail Quadir. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Simple client-side posts store (no backend). Newest posts at top.
+    const postsEl = document.getElementById('posts');
+    postsEl.innerHTML = '';
+        const categoryFilter = document.getElementById('category-filter');
+        const toast = document.getElementById('toast');
+
+        let posts = [
+        ];
+
+        function renderCategories() {
+            const cats = new Set();
+            posts.forEach(p => p.categories.forEach(c => cats.add(c)));
+            // keep 'all' first
+            const current = categoryFilter.value || 'all';
+            categoryFilter.innerHTML = '<option value="all">All</option>' + Array.from(cats).map(c => ` <option value="${c}">${c}</option>`).join('');
+            categoryFilter.value = current;
+        }
+
+        function renderPosts() {
+            const filter = categoryFilter.value;
+            postsEl.innerHTML = '';
+            const shown = posts
+                .filter(p => filter === 'all' || p.categories.includes(filter))
+                .sort((a,b) => b.ts - a.ts);
+            if (shown.length === 0) postsEl.innerHTML = '<li class="empty">No posts yet.</li>';
+            shown.forEach(p => {
+                const li = document.createElement('li');
+                li.className = 'post';
+                li.innerHTML = `<div class="meta"><time datetime="${new Date(p.ts).toISOString()}">${timeAgo(p.ts)}</time> • <span class="cats">${p.categories.map(c => `<span class="cat">${c}</span>`).join(' ')}</span></div><p>${escapeHtml(p.text)}</p>`;
+                postsEl.appendChild(li);
+            });
+        }
+
+        function timeAgo(ts){
+            const s = Math.floor((Date.now()-ts)/1000);
+            if (s < 60) return s + 's ago';
+            const m = Math.floor(s/60);
+            if (m < 60) return m + 'm ago';
+            const h = Math.floor(m/60);
+            if (h < 24) return h + 'h ago';
+            const d = Math.floor(h/24);
+            return d + 'd ago';
+        }
+
+        function escapeHtml(str){
+            return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+        }
+
+        // Compose form handling (guard elements that may be removed)
+        const compose = document.getElementById('compose');
+        const composeToggleEl = document.getElementById('compose-toggle');
+        if (composeToggleEl && compose) {
+            composeToggleEl.addEventListener('click', () => {
+                if (compose.classList) compose.classList.toggle('hidden'); else compose.style.display = (compose.style.display === 'none' ? '' : 'none');
+            });
+        }
+        const cancelComposeEl = document.getElementById('cancel-compose');
+        if (cancelComposeEl && compose) {
+            cancelComposeEl.addEventListener('click', () => {
+                if (compose.classList) compose.classList.add('hidden'); else compose.style.display = 'none';
+            });
+        }
+
+        // Post form submit (only attach if form exists)
+        const postFormEl = document.getElementById('post-form');
+        if (postFormEl) {
+            postFormEl.addEventListener('submit', e => {
+                e.preventDefault();
+                const textEl = document.getElementById('post-text');
+                const catsEl = document.getElementById('post-cats');
+                const text = textEl ? textEl.value.trim() : '';
+                const catsInput = catsEl ? catsEl.value.trim() : '';
+                if (!text) return alert('Please enter some text for the post.');
+                const cats = catsInput ? catsInput.split(',').map(s => s.trim()).filter(Boolean) : ['uncategorized'];
+                const newPost = {id: Date.now(), text, categories: cats, ts: Date.now()};
+                posts.push(newPost);
+                if (textEl) textEl.value = '';
+                if (catsEl) catsEl.value = '';
+                if (compose && compose.classList) compose.classList.add('hidden');
+                renderCategories();
+                renderPosts();
+            });
+        }
+
+        // Filtering (guard)
+        if (categoryFilter) categoryFilter.addEventListener('change', renderPosts);
+
+        // Setup page (guard year element)
+        const yearEl = document.getElementById('year');
+        if (yearEl) yearEl.textContent = new Date().getFullYear();
+        renderCategories();
+        renderPosts();
+    </script>
 </body>
 </html>
