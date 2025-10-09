@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resume - Sohail Quadir</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <h1 class="brand"><a href="main.html">My Short Posts</a></h1>
+            <nav class="main-nav">
+                <a href="main.html">Home</a>
+                <a href="bio.html">About</a>
+                <a href="resume.html">Resume</a>
+                <a href="main.html#categories">Categories</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="resume-header">
+            <h1>My Resume</h1>
+        </div>
+
+        <div class="resume-actions">
+            <a href="SohailQuadirResume090925.pdf" class="btn" download>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download PDF
+            </a>
+            <a href="SohailQuadirResume090925.pdf" class="btn btn-secondary" target="_blank">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                Open in New Tab
+            </a>
+        </div>
+
+        <div class="info-box">
+            💡 <strong>Tip:</strong> You can view the resume below or download it using the buttons above.
+        </div>
+
+        <div class="pdf-container">
+            <iframe 
+                id="pdf-frame"
+                class="pdf-embed" 
+                src="SohailQuadirResume090925.pdf"
+                type="application/pdf">
+            </iframe>
+            <div class="pdf-fallback" style="display: none;">
+                <p>📄 Your browser doesn't support embedded PDFs.</p>
+                <a href="SohailQuadirResume090925.pdf" class="btn" download>Download Resume PDF</a>
+            </div>
+        </div>
+
+        <div class="resume-actions">
+            <a href="main.html" class="btn btn-secondary">← Back to Home</a>
+        </div>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; 2025 Sohail Quadir. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Check if PDF loaded successfully
+        const iframe = document.getElementById('pdf-frame');
+        const fallback = document.querySelector('.pdf-fallback');
+        
+        iframe.addEventListener('error', () => {
+            iframe.style.display = 'none';
+            fallback.style.display = 'block';
+        });
+
+        // Fallback for browsers that don't support PDF embedding
+        setTimeout(() => {
+            try {
+                if (!iframe.contentDocument && !iframe.contentWindow) {
+                    iframe.style.display = 'none';
+                    fallback.style.display = 'block';
+                }
+            } catch (e) {
+                // Cross-origin error means PDF is loading (which is good)
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -5,15 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Homepage - Short Posts</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        /* simple centering */
-        body { display:flex; justify-content:center; }
-        .container { width:800px; max-width:95%; margin:18px; }
-        textarea, input { font-size:16px; }
-        /* header layout so nav links show */
-        .site-header .container{display:flex;align-items:center;justify-content:space-between}
-        .main-nav a{margin-left:10px;color:inherit;text-decoration:none}
-    </style>
 </head>
 <body>
     <header class="site-header">
@@ -22,13 +13,38 @@
             <nav class="main-nav">
                 <a href="main.html">Home</a>
                 <a href="bio.html">About</a>
+                <a href="resume.html">Resume</a>
                 <a href="#categories" id="categories-link">Categories</a>
+                <div class="auth-section" id="auth-section">
+                    <button class="login-btn" id="login-btn">Login</button>
+                </div>
             </nav>
         </div>
     </header>
 
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <h2>Welcome!</h2>
+            <p>Enter your display name to start posting:</p>
+            <form id="login-form">
+                <input type="text" id="username-input" placeholder="Your name" required minlength="2" maxlength="30">
+                <div class="modal-actions">
+                    <button type="submit">Login</button>
+                    <button type="button" id="cancel-login">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <main class="container">
+        <div id="auth-notice" class="auth-notice hidden">
+            <p>👋 Please login to create posts and join the conversation!</p>
+            <button class="login-btn" onclick="document.getElementById('login-btn').click()">Login Now</button>
+        </div>
+
         <section class="controls">
+            <button id="compose-toggle" class="new-post-btn" disabled>+ New Post</button>
             <div class="filter">
                 <label for="category-filter">Filter by category:</label>
                 <select id="category-filter">
@@ -41,7 +57,7 @@
             <h2>Write a quick post</h2>
             <form id="post-form">
                 <textarea id="post-text" rows="3" maxlength="280" placeholder="What's on your mind? (max 280 chars)"></textarea>
-                <input id="post-cats" type="text" placeholder="Categories (comma separated)" />
+                <input id="post-cats" type="text" placeholder="Categories (comma separated, e.g. tech, thoughts, gaming)" />
                 <div class="form-actions">
                     <button type="submit">Post</button>
                     <button type="button" id="cancel-compose">Cancel</button>
@@ -63,21 +79,101 @@
     </footer>
 
     <script>
-        // Simple client-side posts store (no backend). Newest posts at top.
-    const postsEl = document.getElementById('posts');
-    postsEl.innerHTML = '';
+        // Authentication state
+        let currentUser = null;
+
+        // DOM elements
+        const postsEl = document.getElementById('posts');
         const categoryFilter = document.getElementById('category-filter');
         const toast = document.getElementById('toast');
+        const compose = document.getElementById('compose');
+        const composeToggle = document.getElementById('compose-toggle');
+        const cancelCompose = document.getElementById('cancel-compose');
+        const postForm = document.getElementById('post-form');
+        const categoriesLink = document.getElementById('categories-link');
+        const authSection = document.getElementById('auth-section');
+        const loginModal = document.getElementById('login-modal');
+        const loginForm = document.getElementById('login-form');
+        const usernameInput = document.getElementById('username-input');
+        const loginBtn = document.getElementById('login-btn');
+        const cancelLogin = document.getElementById('cancel-login');
+        const authNotice = document.getElementById('auth-notice');
 
+        
         let posts = [
         ];
+
+        function getInitials(name) {
+            return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+        }
+
+        function updateAuthUI() {
+            if (currentUser) {
+                authSection.innerHTML = `
+                    <div class="user-info">
+                        <div class="user-avatar">${getInitials(currentUser)}</div>
+                        <span>${currentUser}</span>
+                    </div>
+                    <button class="logout-btn" id="logout-btn">Logout</button>
+                `;
+                document.getElementById('logout-btn').addEventListener('click', logout);
+                composeToggle.disabled = false;
+                authNotice.classList.add('hidden');
+            } else {
+                authSection.innerHTML = '<button class="login-btn" id="login-btn">Login</button>';
+                document.getElementById('login-btn').addEventListener('click', showLoginModal);
+                composeToggle.disabled = true;
+                compose.classList.add('hidden');
+                authNotice.classList.remove('hidden');
+            }
+        }
+
+        function showLoginModal() {
+            loginModal.classList.remove('hidden');
+            usernameInput.focus();
+        }
+
+        function hideLoginModal() {
+            loginModal.classList.add('hidden');
+            usernameInput.value = '';
+        }
+
+        function login(username) {
+            currentUser = username;
+            updateAuthUI();
+            hideLoginModal();
+            showToast(`Welcome, ${username}!`);
+        }
+
+        function logout() {
+            const username = currentUser;
+            currentUser = null;
+            updateAuthUI();
+            showToast(`Goodbye, ${username}!`);
+        }
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const username = usernameInput.value.trim();
+            if (username) {
+                login(username);
+            }
+        });
+
+        cancelLogin.addEventListener('click', hideLoginModal);
+
+        loginModal.addEventListener('click', (e) => {
+            if (e.target === loginModal) {
+                hideLoginModal();
+            }
+        });
 
         function renderCategories() {
             const cats = new Set();
             posts.forEach(p => p.categories.forEach(c => cats.add(c)));
-            // keep 'all' first
             const current = categoryFilter.value || 'all';
-            categoryFilter.innerHTML = '<option value="all">All</option>' + Array.from(cats).map(c => ` <option value="${c}">${c}</option>`).join('');
+            categoryFilter.innerHTML = '<option value="all">All</option>' + 
+                Array.from(cats).sort().map(c => `<option value="${c}">${c}</option>`).join('');
             categoryFilter.value = current;
         }
 
@@ -87,11 +183,31 @@
             const shown = posts
                 .filter(p => filter === 'all' || p.categories.includes(filter))
                 .sort((a,b) => b.ts - a.ts);
-            if (shown.length === 0) postsEl.innerHTML = '<li class="empty">No posts yet.</li>';
+            
+            if (shown.length === 0) {
+                postsEl.innerHTML = '<li class="empty">No posts to show for this category.</li>';
+                return;
+            }
+            
             shown.forEach(p => {
                 const li = document.createElement('li');
                 li.className = 'post';
-                li.innerHTML = `<div class="meta"><time datetime="${new Date(p.ts).toISOString()}">${timeAgo(p.ts)}</time> • <span class="cats">${p.categories.map(c => `<span class="cat">${c}</span>`).join(' ')}</span></div><p>${escapeHtml(p.text)}</p>`;
+                li.innerHTML = `
+                    <div class="post-header">
+                        <div class="post-avatar">${getInitials(p.author)}</div>
+                        <div class="post-author-info">
+                            <div class="post-author">${escapeHtml(p.author)}</div>
+                        </div>
+                    </div>
+                    <div class="post-content">
+                        <p>${escapeHtml(p.text)}</p>
+                        <div class="post-meta">
+                            <time datetime="${new Date(p.ts).toISOString()}">${timeAgo(p.ts)}</time>
+                            <span class="separator">•</span>
+                            <span class="cats">${p.categories.map(c => `<span class="cat">${c}</span>`).join(' ')}</span>
+                        </div>
+                    </div>
+                `;
                 postsEl.appendChild(li);
             });
         }
@@ -104,55 +220,92 @@
             const h = Math.floor(m/60);
             if (h < 24) return h + 'h ago';
             const d = Math.floor(h/24);
-            return d + 'd ago';
+            if (d < 30) return d + 'd ago';
+            const mo = Math.floor(d/30);
+            if (mo < 12) return mo + ' month' + (mo > 1 ? 's' : '') + ' ago';
+            const y = Math.floor(mo/12);
+            return y + ' year' + (y > 1 ? 's' : '') + ' ago';
         }
 
         function escapeHtml(str){
             return str.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
         }
 
-        // Compose form handling (guard elements that may be removed)
-        const compose = document.getElementById('compose');
-        const composeToggleEl = document.getElementById('compose-toggle');
-        if (composeToggleEl && compose) {
-            composeToggleEl.addEventListener('click', () => {
-                if (compose.classList) compose.classList.toggle('hidden'); else compose.style.display = (compose.style.display === 'none' ? '' : 'none');
-            });
-        }
-        const cancelComposeEl = document.getElementById('cancel-compose');
-        if (cancelComposeEl && compose) {
-            cancelComposeEl.addEventListener('click', () => {
-                if (compose.classList) compose.classList.add('hidden'); else compose.style.display = 'none';
-            });
+        function showToast(message) {
+            toast.textContent = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
         }
 
-        // Post form submit (only attach if form exists)
-        const postFormEl = document.getElementById('post-form');
-        if (postFormEl) {
-            postFormEl.addEventListener('submit', e => {
-                e.preventDefault();
-                const textEl = document.getElementById('post-text');
-                const catsEl = document.getElementById('post-cats');
-                const text = textEl ? textEl.value.trim() : '';
-                const catsInput = catsEl ? catsEl.value.trim() : '';
-                if (!text) return alert('Please enter some text for the post.');
-                const cats = catsInput ? catsInput.split(',').map(s => s.trim()).filter(Boolean) : ['uncategorized'];
-                const newPost = {id: Date.now(), text, categories: cats, ts: Date.now()};
-                posts.push(newPost);
-                if (textEl) textEl.value = '';
-                if (catsEl) catsEl.value = '';
-                if (compose && compose.classList) compose.classList.add('hidden');
-                renderCategories();
-                renderPosts();
-            });
-        }
+        // Compose toggle
+        composeToggle.addEventListener('click', () => {
+            if (!currentUser) {
+                showToast('Please login to create posts');
+                return;
+            }
+            compose.classList.toggle('hidden');
+            if (!compose.classList.contains('hidden')) {
+                document.getElementById('post-text').focus();
+            }
+        });
 
-        // Filtering (guard)
-        if (categoryFilter) categoryFilter.addEventListener('change', renderPosts);
+        cancelCompose.addEventListener('click', () => {
+            compose.classList.add('hidden');
+            document.getElementById('post-text').value = '';
+            document.getElementById('post-cats').value = '';
+        });
 
-        // Setup page (guard year element)
-        const yearEl = document.getElementById('year');
-        if (yearEl) yearEl.textContent = new Date().getFullYear();
+        // Post form submit
+        postForm.addEventListener('submit', e => {
+            e.preventDefault();
+            
+            if (!currentUser) {
+                showToast('Please login to create posts');
+                return;
+            }
+            
+            const text = document.getElementById('post-text').value.trim();
+            const catsInput = document.getElementById('post-cats').value.trim();
+            
+            if (!text) {
+                showToast('Please enter some text for the post.');
+                return;
+            }
+            
+            const cats = catsInput ? 
+                catsInput.split(',').map(s => s.trim()).filter(Boolean) : 
+                ['uncategorized'];
+            
+            const newPost = {
+                id: Date.now(), 
+                text, 
+                categories: cats, 
+                ts: Date.now(),
+                author: currentUser
+            };
+            
+            posts.push(newPost);
+            document.getElementById('post-text').value = '';
+            document.getElementById('post-cats').value = '';
+            compose.classList.add('hidden');
+            
+            renderCategories();
+            renderPosts();
+            showToast('Post created successfully!');
+        });
+
+        // Category filtering
+        categoryFilter.addEventListener('change', renderPosts);
+
+        // Categories link scrolls to filter
+        categoriesLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            categoryFilter.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            categoryFilter.focus();
+        });
+
+        // Initialize
+        updateAuthUI();
         renderCategories();
         renderPosts();
     </script>
